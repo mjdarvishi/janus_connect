@@ -19,7 +19,7 @@ import sys
 class RTSPVideoStreamTrack(VideoStreamTrack):
     def __init__(self):
         super().__init__()
-        self.video_recorder = cv2.VideoCapture('rtsp://admin:Vigilanza2018@192.168.202.201/Streaming/Channels/1')
+        self.video_recorder = cv2.VideoCapture(0)
 
     async def recv(self):
         current_time = time.time()
@@ -81,7 +81,6 @@ def handle_shutdown(signum, frame):
 async def main(web_rtc_connection:WebRtc):
     requests.get('http://127.0.0.1:2525/create_session/1')
     requests.get('http://127.0.0.1:2525/create_session/2')
-    # Gather ICE candidates
     await web_rtc_connection.create_offer()    
     res=requests.post('http://localhost:2525/add_track/1234?user_id=1',json={'sdp':web_rtc_connection.pc.localDescription.sdp})
     data=res.json()
