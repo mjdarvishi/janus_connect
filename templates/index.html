@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janus Video Room</title>
+    <style>
+        video {
+            width: 640px;
+            height: 480px;
+            background-color: black;
+        }
+        #connectionStatus {
+            margin-top: 10px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Janus Video Room</h1>
+    <div>
+        <video id="remoteVideo" autoplay playsinline></video>
+        <div id="connectionStatus">Connection status: <span id="statusText">Connecting...</span></div>
+
+    </div>
+    <button id="joinBtn">Join Room</button>
+
+    <script>
+        document.getElementById("joinBtn").addEventListener("click", subscribeToRoom);
+        userId="2"
+        roomId=1234
+        const config = {
+            iceServers: [{ urls: "stun:stun.l.google.com:19302" }] // STUN server for ICE
+        };
+        const pc = new RTCPeerConnection(config);
+        pc.ontrack = (event) => {
+            console.log(event.streams)
+            if (remoteVideo.srcObject !== event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+            }
+        };
+        
+        pc.onconnectionstatechange = () => {
+            switch(pc.connectionState) {
+                case "connected":
+                    connectionStatus.textContent = "Connected";
+                    connectionStatus.style.color = "green";
+                    break;
+                case "disconnected":
+                case "failed":
+                    connectionStatus.textContent = "Disconnected";
+                    connectionStatus.style.color = "red";
+                    break;
+                case "connecting":
+                    connectionStatus.textContent = "Connecting...";
+                    connectionStatus.style.color = "orange";
+                    break;
+                default:
+                    connectionStatus.textContent = pc.connectionState;
+                    connectionStatus.style.color = "black";
+                    break;
+            }
+        };
+      
+        async function subscribeToRoom() {
+          
+            // Get the SDP offer from Janus
+            const response = await fetch(`/subscribe/${roomId}?user_id=${userId}`, {
+                method: "POST"
+            });
+            const sdpOffer = await response.json();
+            if (!sdpOffer) {
+                throw new Error("Failed to subscribe to room or receive SDP.");
+            }
+           
+            // Set Janus SDP offer as the remote description
+            await pc.setRemoteDescription(new RTCSessionDescription(sdpOffer));
+        
+            // Create an answer to complete the connection
+            const answer = await pc.createAnswer();
+            
+            await pc.setLocalDescription(answer);
+            // Send answer back to Janus through the server
+            res=await fetch(`/complete_connection`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sdp: pc.localDescription.sdp,type:pc.localDescription.type, room_id: roomId, user_id: userId })
+            });
+            console.log("Joined the room successfully!",await res.json());
+        }
+      </script>
+</body>
+</html>
