@@ -8,6 +8,7 @@ SERVER_URL = "http://localhost:2525"
 ROOM_ID = 1234
 USER_ID = "2"
 
+
 pc = RTCPeerConnection()
 async def display_video(track):
     window_name = "Janus Video Room"
